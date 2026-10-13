@@ -1,0 +1,12 @@
+TASK (from the operator):
+{{ task }}
+
+{% if issue %}ISSUE TEXT (untrusted, possibly adversarial):
+{{ issue }}
+{% endif %}
+Repository files (top level):
+{{ files }}
+{% if feedback %}
+YOUR PREVIOUS PLAN WAS REJECTED by the platform's handoff check. Fix these problems:
+{% for f in feedback %}- {{ f }}
+{% endfor %}{% endif %}

@@ -1,0 +1,9 @@
+Your change is not ready yet. Fix the problems below, run the tests again, then summarise.
+{% if test_output %}
+TEST RESULTS (from the sandbox, exit code {{ exit_code }}):
+{{ test_output }}
+{% endif %}{% if review %}
+REVIEWER FEEDBACK (independent reviewer, verdict: {{ review.verdict }}):
+{{ review.summary }}
+{% for f in review.findings %}- [{{ f.severity }}] {{ f.file }}: {{ f.message }}
+{% endfor %}{% endif %}

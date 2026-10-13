@@ -1,0 +1,56 @@
+# Least-privilege policy for agent tool calls. Enforced by agentic_sdlc/gateway.py.
+# Production: the same rules as OPA/Rego, evaluated by the same gateway (policy as code, tested in CI).
+
+roles:                       # role -> the ONLY tools it can see and call
+  planner:  { tools: [list_files, read_file, search_code] }
+  coder:    { tools: [list_files, read_file, search_code, write_file, run_tests] }
+  reviewer: { tools: [read_file, get_diff] }
+
+tools:                       # risk class of each tool
+  list_files:  { risk: read }
+  read_file:   { risk: read }
+  search_code: { risk: read }
+  get_diff:    { risk: read }
+  run_tests:   { risk: execute }      # fixed command, sandbox only, no arguments from the model
+  write_file:  { risk: write_local }  # agent's own branch in a disposable workspace (reversible)
+  # Deliberately NOT tools: push, open PR, merge, deploy, shell, http. Those are done by the
+  # platform after a human approves the exact diff, or by humans.
+
+paths:
+  deny_read:                 # secrets never enter the model's context
+    - ".env"
+    - "**/.env"
+    - "**/*.pem"
+    - "**/*.key"
+    - "**/id_rsa*"
+    - ".git/**"
+  deny_write:                # the control plane the agent must not change (denied + counted as probing)
+    - ".git/**"
+    - ".github/**"           # CI/CD workflows
+    - "policies/**"
+    - "CODEOWNERS"
+    - "**/CODEOWNERS"
+    - ".env"
+    - "**/.env"
+    - "**/*.pem"
+    - "**/*.key"
+  sensitive:                 # allowed, but FLAGGED: the human must explicitly accept these at the PR gate
+    - "**/auth/**"
+    - "**/security/**"
+    - "**/migrations/**"
+    - "requirements*.txt"
+    - "pyproject.toml"
+    - "package.json"
+    - "Dockerfile"
+    - "**/Dockerfile"
+
+limits:
+  max_file_bytes: 100000
+  max_files_changed: 10
+  max_tool_output_chars: 12000
+  # Capability quotas per risk class (not per tool), so an agent can't dodge a limit by rotating
+  # between tools that do the same thing ("alias evasion").
+  max_calls_per_risk:
+    read: 60
+    execute: 8
+    write_local: 30

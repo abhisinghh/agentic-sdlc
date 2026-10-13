@@ -1,0 +1,25 @@
+# NeMo Guardrails configuration used by agentic_sdlc/guardrails.py (NemoRails).
+#
+# The judge model should run INSIDE your trust boundary (on-prem vLLM / NIM), so untrusted issue
+# text is never shipped to a third party just to be screened. Any OpenAI-compatible endpoint works.
+# Set OPENAI_API_KEY to the server's key (or any non-empty value if it has none).
+models:
+  - type: main
+    engine: openai
+    model: Qwen/Qwen3-8B
+    parameters:
+      base_url: http://localhost:8000/v1
+      temperature: 0
+  # Hosted alternative (only for public/internal data):
+  # - type: main
+  #   engine: anthropic
+  #   model: claude-haiku-5-5
+
+rails:
+  input:
+    flows:
+      - check prompt injection    # Colang flow in rails.co -> deterministic Python action (cheap, first)
+      - self check input          # LLM judge with the policy in prompts.yml
+  output:
+    flows:
+      - self check output         # screens text the platform publishes (PR description)

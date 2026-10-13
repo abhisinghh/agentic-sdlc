@@ -1,0 +1,45 @@
+# agentic-sdlc configuration. Read this file and policies/policy.yaml and you know everything
+# the agent is allowed to do.
+
+llm:
+  provider: anthropic            # anthropic | openai | local   (local = any OpenAI-compatible server: vLLM, Ollama)
+  # A BEST / DEFAULT / SMALL model per provider; roles pick a tier.
+  anthropic: { best: claude-opus-5-5, default: claude-sonnet-5-5, small: claude-haiku-5-5 }
+  openai:    { best: gpt-5,           default: gpt-5,             small: gpt-5-mini }
+  local:     { best: Qwen/Qwen3-Coder-30B-A3B-Instruct, default: Qwen/Qwen3-Coder-30B-A3B-Instruct,
+               small: Qwen/Qwen3-8B, base_url: "http://localhost:8000/v1", api_key_env: VLLM_API_KEY }
+  roles: { planner: default, coder: best, reviewer: best, guard: small }
+  fallback_to_local: false       # true: hosted model errors fall back to the local model (same agent, same tools)
+
+# Data classification of the repository. Hosted APIs are only allowed for the classes listed.
+# confidential/restricted code therefore runs on the local (on-prem) provider or not at all.
+data_class: internal             # public | internal | confidential | restricted
+allow_hosted_for: [public, internal]
+
+sandbox:
+  mode: docker                   # docker (isolated) | local (NOT isolated, dev only) | off (tests never run)
+  image: agentic-sdlc-runner:latest   # build with: docker build -t agentic-sdlc-runner sandbox/
+  runtime: null                  # "runsc" to use gVisor
+  timeout_s: 120
+
+limits:                          # runtime monitoring thresholds (monitor.py)
+  max_model_requests: 40         # per agent run (pydantic-ai UsageLimits)
+  max_total_tokens: 400000       # per agent run
+  max_tool_calls: 60             # per pipeline run
+  max_consecutive_denials: 3     # a model that keeps hitting the policy is probing => kill
+  max_identical_calls: 4         # same tool + same args again and again => loop => kill
+  max_run_seconds: 1800          # agent time; time spent waiting at a human gate is not counted
+  max_fix_rounds: 2              # reflection rounds (failing tests or reviewer changes); stops early on stagnation
+  max_plan_retries: 1            # a plan that trips the handoff guardrail is sent back once with the feedback
+
+github:                          # leave repo empty for "local mode": the PR is written to var/prs/
+  repo: ""                       # owner/name
+  base_branch: main
+  token_env: GITHUB_TOKEN        # fine-grained token: contents:write + pull_requests:write on ONE repo
+  branch_prefix: agent/
+
+paths:
+  workspaces: var/workspaces
+  prs: var/prs
+  audit_log: logs/audit.jsonl
+  kill_switch: var/KILL          # create this file to stop every run at its next step

@@ -1,0 +1,9 @@
+Review this change.
+
+APPROVED PLAN:
+{{ plan }}
+
+{% if tests %}SANDBOX TEST RESULT: exit code {{ tests.exit_code }}{% if not tests.executed %} (tests were NOT executed: sandbox off){% endif %}
+{% endif %}{% if context %}CONTEXT:
+{{ context }}
+{% endif %}

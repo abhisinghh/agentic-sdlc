@@ -1,0 +1,12 @@
+# Colang 1.0. A deterministic input rail that runs before the LLM self-check:
+# the Python action `check_prompt_injection` (registered in agentic_sdlc/guardrails.py) reuses the
+# same heuristics as the platform's own scanner, so cheap known attacks never cost a model call.
+
+define flow check prompt injection
+  $is_injection = execute check_prompt_injection(text=$user_message)
+  if $is_injection
+    bot refuse prompt injection
+    stop
+
+define bot refuse prompt injection
+  "Blocked: the request looks like a prompt-injection attempt."

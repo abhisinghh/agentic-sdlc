@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "standard": {"format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"},
+    "json": {"class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+             "format": "%(asctime)s %(levelname)s %(name)s %(message)s"}
+  },
+  "handlers": {
+    "console":  {"class": "logging.StreamHandler", "level": "INFO", "formatter": "standard"},
+    "prompts":  {"class": "logging.handlers.RotatingFileHandler", "level": "DEBUG", "formatter": "json",
+                 "filename": "logs/prompts.log", "maxBytes": 2048000, "backupCount": 2},
+    "guards":   {"class": "logging.handlers.RotatingFileHandler", "level": "DEBUG", "formatter": "json",
+                 "filename": "logs/guards.log", "maxBytes": 2048000, "backupCount": 2},
+    "tools":    {"class": "logging.handlers.RotatingFileHandler", "level": "DEBUG", "formatter": "json",
+                 "filename": "logs/tools.log", "maxBytes": 2048000, "backupCount": 2},
+    "feedback": {"class": "logging.handlers.RotatingFileHandler", "level": "DEBUG", "formatter": "json",
+                 "filename": "logs/feedback.log", "maxBytes": 2048000, "backupCount": 2},
+    "evals":    {"class": "logging.handlers.RotatingFileHandler", "level": "DEBUG", "formatter": "json",
+                 "filename": "logs/evals.log", "maxBytes": 2048000, "backupCount": 2}
+  },
+  "loggers": {
+    "agentic_sdlc.prompt_service": {"handlers": ["prompts"], "level": "DEBUG", "propagate": false},
+    "agentic_sdlc.guardrails":     {"handlers": ["guards", "console"], "level": "DEBUG", "propagate": false},
+    "agentic_sdlc.gateway":        {"handlers": ["tools", "console"], "level": "DEBUG", "propagate": false},
+    "agentic_sdlc.hitl":           {"handlers": ["feedback", "console"], "level": "DEBUG", "propagate": false},
+    "agentic_sdlc.evals":          {"handlers": ["evals"], "level": "DEBUG", "propagate": false}
+  },
+  "root": {"handlers": ["console"], "level": "INFO"}
+}
