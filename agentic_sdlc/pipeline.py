@@ -36,11 +36,24 @@ from pydantic_ai.models import Model
 
 from agentic_sdlc import github
 from agentic_sdlc.agents import CoderAgent, PlannerAgent, ReviewerAgent
-from agentic_sdlc.checks import GateDecision, confidence, confidence_gate, plan_handoff_guardrail, round_fingerprint
+from agentic_sdlc.checks import (
+    GateDecision,
+    confidence,
+    confidence_gate,
+    plan_handoff_guardrail,
+    round_fingerprint,
+)
 from agentic_sdlc.config import ROOT, Policy, Settings
 from agentic_sdlc.gateway import ToolGateway, matches
-from agentic_sdlc.guardrails import (NemoRails, apply_guardrails, injection_blocker, injection_stripper, redact,
-                                      secret_redactor, spotlight)
+from agentic_sdlc.guardrails import (
+    NemoRails,
+    apply_guardrails,
+    injection_blocker,
+    injection_stripper,
+    redact,
+    secret_redactor,
+    spotlight,
+)
 from agentic_sdlc.hitl import ApprovalError, Approver, ensure_approved
 from agentic_sdlc.llms import DataResidencyError
 from agentic_sdlc.monitor import RunKilled, RunMonitor

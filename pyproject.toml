@@ -43,3 +43,9 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+# Pinned rule set so CI results don't change when ruff's defaults change.
+select = ["E", "F", "W", "I", "B", "UP", "PLE", "S102", "S307"]  # S102/S307: exec/eval in OUR code
+ignore = ["E501", "UP042"]  # UP042: (str, Enum) is intentional, values are serialised to JSON

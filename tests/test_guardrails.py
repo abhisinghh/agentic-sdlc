@@ -1,8 +1,16 @@
 """Guardrail scanners, spotlighting, and the Guardrails AI code validators."""
 
-from agentic_sdlc.guardrails import (apply_guardrails, find_dangerous_code, find_injection, injection_blocker,
-                                      injection_stripper, redact, secret_redactor, spotlight,
-                                      validate_generated_file)
+from agentic_sdlc.guardrails import (
+    apply_guardrails,
+    find_dangerous_code,
+    find_injection,
+    injection_blocker,
+    injection_stripper,
+    redact,
+    secret_redactor,
+    spotlight,
+    validate_generated_file,
+)
 
 from .conftest import POISONED_ISSUE
 
@@ -27,7 +35,7 @@ async def test_poisoned_issue_is_cleaned_not_blocked():
 
 
 def test_invisible_unicode_is_detected():
-    assert "invisible_unicode" in find_injection("hello​world")
+    assert "invisible_unicode" in find_injection("hello\u200bworld")
 
 
 async def test_secrets_are_redacted():

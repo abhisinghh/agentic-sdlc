@@ -96,7 +96,7 @@ with st.sidebar:
         base_url = st.text_input("Base URL (OpenAI-compatible)", value=LOCAL_SERVERS[server][0])
         local_key = st.text_input("API key (only if your server needs one)", type="password")
         os.environ["VLLM_API_KEY"] = local_key  # read by llms.py for the local provider
-        if st.button("🔌 Check server & list models", use_container_width=True):
+        if st.button("🔌 Check server & list models", width="stretch"):
             ss.local_models = list_local_models(base_url, local_key)
         found = ss.get("local_models") or []
         if found and not found[0].startswith("⚠️"):
@@ -114,7 +114,7 @@ with st.sidebar:
                               help="docker = isolated sandbox · local = runs on this machine (not isolated) · "
                                    "off = code is written but tests aren't run")
     approver = st.text_input("Your name (recorded with each decision)", value=os.environ.get("USER", "me"))
-    if st.button("🆕 New project", use_container_width=True):
+    if st.button("🆕 New project", width="stretch"):
         reset()
         st.rerun()
 
@@ -132,7 +132,7 @@ with st.sidebar:
             for f in files:
                 z.write(project / f, arcname=f)
         st.download_button("⬇️ Download project (.zip)", buf.getvalue(), file_name="project.zip",
-                           use_container_width=True)
+                           width="stretch")
 
 
 # ================================================================== agent actions
@@ -276,23 +276,23 @@ for m in ss.messages:
                 for g in d.get("guards") or []:
                     st.write(f"🛡️ {g['source']}: {g['guardrail']} ({g['reason']})")
                 if d.get("tools"):
-                    st.dataframe(d["tools"], hide_index=True, use_container_width=True)
+                    st.dataframe(d["tools"], hide_index=True, width="stretch")
 
 if ss.pending == "plan":
     a, b = st.columns(2)
-    if a.button("✅ Approve plan", type="primary", use_container_width=True):
+    if a.button("✅ Approve plan", type="primary", width="stretch"):
         with st.spinner("Writing code and tests, running the tests, independent review…"):
             approve_plan()
         st.rerun()
-    if b.button("🗑️ Discard", use_container_width=True):
+    if b.button("🗑️ Discard", width="stretch"):
         discard()
         st.rerun()
 elif ss.pending == "diff":
     a, b = st.columns(2)
-    if a.button("✅ Accept change", type="primary", use_container_width=True):
+    if a.button("✅ Accept change", type="primary", width="stretch"):
         accept_change()
         st.rerun()
-    if b.button("🗑️ Discard", use_container_width=True):
+    if b.button("🗑️ Discard", width="stretch"):
         discard()
         st.rerun()
 

@@ -13,6 +13,7 @@ The sandbox output is evidence for the harness ("check, don't trust the model's 
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,9 @@ from pathlib import Path
 from agentic_sdlc.config import SandboxSettings
 
 TEST_COMMAND = ["python", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", "--maxfail=5"]
+_DOCKER_FAILURE = re.compile(r"(?i)cannot connect to the docker daemon|failed to connect to the docker api|"
+                             r"unable to find image|pull access denied|error response from daemon|"
+                             r"docker: .*not found|permission denied while trying to connect")
 
 
 @dataclass
@@ -69,9 +73,16 @@ class Sandbox:
 
     def _run(self, cmd: list[str], cwd: Path | None, mode: str) -> TestResult:
         try:
-            p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=self.cfg.timeout_s)
+            p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=self.cfg.timeout_s,
+                               check=False)  # non-zero exit = failing tests, reported, not raised
         except subprocess.TimeoutExpired:
             return TestResult(True, 124, f"timed out after {self.cfg.timeout_s}s", mode)
         except FileNotFoundError as e:
             return TestResult(False, 127, f"sandbox unavailable: {e}", mode)
-        return TestResult(True, p.returncode, (p.stdout + "\n" + p.stderr).strip(), mode)
+        output = (p.stdout + "\n" + p.stderr).strip()
+        if mode == "docker" and (p.returncode in (125, 126, 127) or _DOCKER_FAILURE.search(p.stderr)):
+            # The container never ran the tests (daemon down, image missing, runtime error): report
+            # "not executed", never "tests failed", so the coder isn't sent to fix a phantom failure
+            # and the approver sees the flag. (Audit finding.)
+            return TestResult(False, p.returncode, "sandbox unavailable: " + p.stderr.strip()[:500], mode)
+        return TestResult(True, p.returncode, output, mode)

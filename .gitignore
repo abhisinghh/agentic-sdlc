@@ -1,0 +1,9 @@
+keys.env
+.env
+!examples/sample_repo/.env
+logs/
+var/
+__pycache__/
+.pytest_cache/
+.venv/
+*.egg-info/

@@ -4,8 +4,13 @@ stagnation detector, and the gateway's idempotent read cache."""
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
-from agentic_sdlc.checks import (GateDecision, confidence, confidence_gate, plan_handoff_guardrail,
-                                  round_fingerprint)
+from agentic_sdlc.checks import (
+    GateDecision,
+    confidence,
+    confidence_gate,
+    plan_handoff_guardrail,
+    round_fingerprint,
+)
 from agentic_sdlc.demo_models import PLAN, REVIEW, offline_models
 from agentic_sdlc.pipeline import SDLCRun
 from agentic_sdlc.schemas import Plan, Review

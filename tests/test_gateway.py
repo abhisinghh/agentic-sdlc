@@ -85,3 +85,31 @@ async def test_probing_gets_the_run_killed(gw):
     with pytest.raises(RunKilled, match="consecutive policy denials"):
         await gw.call("coder", "read_file", {"path": "id_rsa"})
     assert gw.audit.verify()[0]
+
+
+# ---- regression tests from the first audit run ---------------------------------------------
+@pytest.mark.parametrize("path", ["app/../.github/workflows/ci.yml", ".GitHub/workflows/ci.yml",
+                                  "app/../policies/policy.yaml", "src/../../x/../CODEOWNERS"])
+def test_deny_list_applies_to_the_normalised_path(gw, path):
+    """Policy must see the canonical path: 'app/../.github/...' IS '.github/...'; case must not matter."""
+    assert gw.decide("coder", "write_file", {"path": path, "content": "x"}).decision == Decision.DENY
+
+
+def test_secret_read_denied_through_traversal_and_case(gw):
+    for path in ["app/../.env", "app/../.ENV", ".Env"]:
+        assert gw.decide("coder", "read_file", {"path": path}).decision == Decision.DENY
+
+
+def test_test_files_may_build_bad_sql_but_not_execute_code(gw):
+    sqli_test = "def test_i(c):\n    c.execute(f\"SELECT * FROM t WHERE n='{x}'\")\n"
+    assert gw.decide("coder", "write_file", {"path": "tests/test_sqli.py", "content": sqli_test}).decision == Decision.ALLOW
+    for bad in ["def test_a():\n    exec('1')\n", "import os\ndef test_b():\n    os.system('id')\n"]:
+        assert gw.decide("coder", "write_file", {"path": "tests/test_x.py", "content": bad}).decision == Decision.DENY
+
+
+def test_both_guardrails_ai_validators_run(gw):
+    """Secrets AND dangerous calls must each be caught on their own (a chained .use() dropped one of them)."""
+    only_secret = 'TOKEN = "ghp_' + "a" * 36 + '"\n'
+    only_eval = "def f(x):\n    return eval(x)\n"
+    assert "secret" in gw.decide("coder", "write_file", {"path": "app/a.py", "content": only_secret}).reasons[0]
+    assert "eval" in gw.decide("coder", "write_file", {"path": "app/b.py", "content": only_eval}).reasons[0]

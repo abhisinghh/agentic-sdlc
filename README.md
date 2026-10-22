@@ -63,8 +63,8 @@ agentic-sdlc review --repo /path/to/repo --head my-branch     # review an existi
 Nothing is pushed to GitHub unless you configure `github.repo` in `config.yaml` and set `GITHUB_TOKEN`.
 Otherwise the approved change is saved to `var/prs/`.
 
-> This code has been written and reviewed but not yet run. If the first `pytest` fails, it's most likely
-> a small API difference in one of the libraries for your installed version.
+Tested on Python 3.13 with git 2.43 (git 2.15+ works): 49 tests and the 37-case security benchmark pass,
+both Streamlit apps run end to end, and NeMo Guardrails fails closed when its judge model is unreachable.
 
 ## Models
 

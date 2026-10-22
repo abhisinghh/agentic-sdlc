@@ -24,7 +24,8 @@ _GIT = ["git", "-c", "core.hooksPath=/dev/null", "-c", "core.symlinks=false", "-
 def git(cwd: Path, *args: str, check: bool = True, extra_env: dict[str, str] | None = None) -> str:
     env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "GIT_TERMINAL_PROMPT": "0", "HOME": str(cwd),
            **(extra_env or {})}
-    proc = subprocess.run([*_GIT, *args], cwd=cwd, env=env, capture_output=True, text=True, timeout=120)
+    proc = subprocess.run([*_GIT, *args], cwd=cwd, env=env, capture_output=True, text=True, timeout=120,
+                          check=False)  # the caller decides (see `check` below)
     if check and proc.returncode != 0:
         raise WorkspaceError(f"git {args[0]} failed: {proc.stderr.strip()[:400]}")
     return proc.stdout

@@ -52,7 +52,7 @@ INJECTION_PATTERNS: dict[str, re.Pattern[str]] = {
                                            re.I | re.S),
     "encoded_payload": re.compile(r"[A-Za-z0-9+/]{120,}={0,2}"),
 }
-INVISIBLE = re.compile("[​-‏‪-‮⁠-⁤﻿\U000e0000-\U000e007f]")
+INVISIBLE = re.compile("[\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff\U000e0000-\U000e007f]")
 
 SECRET_PATTERNS: dict[str, re.Pattern[str]] = {
     "aws_access_key": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
@@ -96,10 +96,17 @@ def redact(text: str) -> tuple[str, int]:
     return text, n
 
 
+# Rules that are legitimately violated by tests (e.g. an injection test that builds a bad query on purpose).
+# Everything else (eval/exec, shell, pickle, TLS off) stays banned in tests too: test files RUN in run_tests.
+_TEST_EXEMPT_RULES = {"SQL built with f-string/format", "query string built with f-string"}
+
+
 def find_dangerous_code(path: str, content: str) -> list[str]:
     problems = [f"hard-coded secret ({s})" for s in find_secrets(content)]
-    if path.endswith(".py") and not Path(path).name.startswith("test_"):
-        problems += [f"dangerous pattern: {name}" for name, rx in DANGEROUS_PYTHON.items() if rx.search(content)]
+    if path.endswith(".py"):
+        is_test = Path(path).name.startswith("test_") or "/tests/" in f"/{path}"
+        problems += [f"dangerous pattern: {name}" for name, rx in DANGEROUS_PYTHON.items()
+                     if rx.search(content) and not (is_test and name in _TEST_EXEMPT_RULES)]
     return problems
 
 
@@ -194,7 +201,19 @@ class NemoRails:
 def _code_guard():  # type: ignore[no-untyped-def]
     """Guardrails AI Guard with two custom validators, built once (validators register globally)."""
     from guardrails import Guard, OnFailAction
-    from guardrails.validator_base import FailResult, PassResult, ValidationResult, Validator, register_validator
+    from guardrails.settings import settings as gr_settings
+    from guardrails.validator_base import (
+        FailResult,
+        PassResult,
+        ValidationResult,
+        Validator,
+        register_validator,
+    )
+
+    # Guardrails AI ships with usage telemetry ON by default: spans go to a Guardrails-hosted AWS
+    # endpoint unless ~/.guardrailsrc says otherwise. A security tool must not phone home, so it is
+    # switched off here (validators read the flag at construction; the Guard gets it via configure()).
+    gr_settings.rc.enable_metrics = False
 
     @register_validator(name="agentic/no-hardcoded-secrets", data_type="string")
     class NoHardcodedSecrets(Validator):
@@ -209,7 +228,12 @@ def _code_guard():  # type: ignore[no-untyped-def]
             bad = [p for p in find_dangerous_code(path, value) if p.startswith("dangerous")]
             return FailResult(error_message="; ".join(bad)) if bad else PassResult()
 
-    return Guard().use(NoHardcodedSecrets(on_fail=OnFailAction.NOOP)).use(SafePython(on_fail=OnFailAction.NOOP))
+    # Both validators in ONE use() call: chaining .use(A).use(B) silently REPLACES A with B
+    # (Guard.use docstring: "Calling Guard.use ... multiple times will overwrite previously configured
+    # validators"). The chained form passed secrets through unchecked; the test suite caught it.
+    guard = Guard().use(NoHardcodedSecrets(on_fail=OnFailAction.NOOP), SafePython(on_fail=OnFailAction.NOOP))
+    guard.configure(allow_metrics_collection=False)  # Guard() re-reads ~/.guardrailsrc; override explicitly
+    return guard
 
 
 def validate_generated_file(path: str, content: str) -> list[str]:

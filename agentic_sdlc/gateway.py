@@ -75,8 +75,11 @@ def call_key(tool: str, args: dict[str, object]) -> str:
     return hashlib.sha256(canon.encode()).hexdigest()
 
 
-def matches(path: str, globs: list[str]) -> list[str]:
+def matches(path: str, globs: list[str], *, ignore_case: bool = False) -> list[str]:
     path = path.removeprefix("./")
+    if ignore_case:  # deny lists: on case-insensitive filesystems ".GitHub/" IS ".github/"
+        path = path.lower()
+        return [g for g in globs if _glob(g.lower()).match(path)]
     return [g for g in globs if _glob(g).match(path)]
 
 
@@ -111,22 +114,25 @@ class ToolGateway:
         except ValidationError as e:
             return ToolDecision(Decision.DENY, [f"invalid arguments: {e.errors()[0]['msg']}"])
 
-        path = getattr(parsed, "path", None)
-        if path is None:
+        raw_path = getattr(parsed, "path", None)
+        if raw_path is None:
             return ToolDecision(Decision.ALLOW)
         try:
-            self.workspace.resolve(path)
+            resolved = self.workspace.resolve(raw_path)
         except WorkspaceError as e:
             return ToolDecision(Decision.DENY, [str(e)])
+        # All policy checks run on the CANONICAL workspace-relative path, never on the raw string:
+        # "app/../.github/workflows/ci.yml" must hit the ".github/**" rule. (Audit finding.)
+        path = resolved.relative_to(self.workspace.path).as_posix()
         p = self.policy.paths
-        if tool == "read_file" and (hit := matches(path, p.deny_read)):
+        if tool == "read_file" and (hit := matches(path, p.deny_read, ignore_case=True)):
             return ToolDecision(Decision.DENY, [f"reading {path} is not allowed (matches {hit[0]}): secrets "
                                                 "never enter the model's context"])
         if tool != "write_file":
             return ToolDecision(Decision.ALLOW)
 
         # ---- write_file
-        if hit := matches(path, p.deny_write):
+        if hit := matches(path, p.deny_write, ignore_case=True):
             return ToolDecision(Decision.DENY, [f"writing {path} is prohibited (matches {hit[0]}): CI/CD, policies "
                                                 "and secrets are human-owned"])
         content = str(getattr(parsed, "content", ""))
@@ -162,6 +168,8 @@ class ToolGateway:
 
         spec = TOOL_SPECS[tool]
         risk = self.policy.tools[tool].risk
+        if "path" in args:  # execute on the canonical path the policy was evaluated against
+            args = {**args, "path": self.workspace.resolve(str(args["path"])).relative_to(self.workspace.path).as_posix()}
         key = call_key(tool, args)
         cached = risk == "read" and key in self._read_cache
         if cached:

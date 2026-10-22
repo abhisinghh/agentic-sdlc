@@ -15,8 +15,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from pydantic_ai.messages import (ModelMessage, ModelRequest, ModelResponse, TextPart, ToolCallPart,
-                                  UserPromptPart)
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    ToolCallPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 FIXED_DB = '''import sqlite3

@@ -57,3 +57,18 @@ def test_audit_chain_detects_tampering(settings):
     ev["x"] = 999
     log.path.write_text("\n".join([json.dumps(ev), lines[1]]) + "\n")
     assert not AuditLog(settings.paths.audit_log).verify()[0]
+
+
+def test_docker_sandbox_unavailable_is_not_reported_as_failing_tests(monkeypatch):
+    """Daemon down / image missing => executed=False (flagged), never a phantom test failure."""
+    import subprocess
+
+    from agentic_sdlc.config import SandboxSettings
+    from agentic_sdlc.sandbox import Sandbox
+
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 1, "", "failed to connect to the docker API at unix:///var/run/docker.sock")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    r = Sandbox(SandboxSettings(mode="docker")).run_tests(__import__("pathlib").Path("."))
+    assert r.executed is False and not r.passed and "sandbox unavailable" in r.output
